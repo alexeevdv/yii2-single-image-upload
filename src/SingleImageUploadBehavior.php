@@ -71,8 +71,9 @@ class SingleImageUploadBehavior extends Behavior
                 continue;
             }
             if (!$this->owner->{$attribute}) {
-                $this->owner->{$attribute} = null;
-                $this->owner->save(false, [$attribute]);
+                $this->owner->updateAttributes([
+                    $attribute => null,
+                ]);
             }
         }
     }
