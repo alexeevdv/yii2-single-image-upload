@@ -13,7 +13,7 @@ class SingleImageUploadAsset extends AssetBundle
     /**
      * @inheritdoc
      */
-    public $sourcePath = '@vendor/alexeevdv/yii2-single-image-upload/assets';
+    public $sourcePath = '@vendor/alexeevdv/yii2-single-image-upload/src/assets';
 
     /**
      * @inheritdoc

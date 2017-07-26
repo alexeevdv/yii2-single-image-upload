@@ -14,6 +14,22 @@ use yii\helpers\Url;
 class SingleImageUploadWidget extends FileInput
 {
     /**
+     * @var string
+     */
+    public $containerClass = 'single-image-upload-widget';
+
+    /**
+     * @inheritdoc
+     */
+    public function getId($autoGenerate = true)
+    {
+        if ($this->model) {
+            return Html::getInputId($this->model, $this->attribute);
+        }
+        return parent::getId($autoGenerate);
+    }
+
+    /**
      * @inheritdoc
      */
     public function init()
@@ -31,18 +47,11 @@ class SingleImageUploadWidget extends FileInput
                 'showCaption' => false,
                 'showUpload' => false,
                 'initialPreview' => [
-                    $value ? Url::to('/uploads/' . $$value) : null
+                    $value ? Url::to('/uploads/' . $value) : null
                 ],
                 'initialPreviewAsData' => true,
             ],
             $this->pluginOptions
-        );
-
-        $this->options = ArrayHelper::merge(
-            [
-                'class' => ['single-image-upload-widget'],
-            ],
-            $this->options
         );
 
         parent::init();
@@ -56,8 +65,9 @@ class SingleImageUploadWidget extends FileInput
         SingleImageUploadAsset::register($this->getView());
 
         $this->getView()->registerJs("
+            $('#$this->id').data('fileinput').\$container.addClass('$this->containerClass');
             $('#$this->id').on('fileclear', function(event) {
-                $('#$this->id input[type=hidden]').val('');
+                $('#$this->id').data('fileinput').\$container.next('input[type=hidden]').val('');
             });
         ");
 
