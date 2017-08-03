@@ -65,9 +65,10 @@ class SingleImageUploadBehavior extends Behavior
             $file = UploadedFile::getInstance($this->owner, $attribute);
             if ($file) {
                 $filename = $this->generateFilename($file);
-                $this->owner->{$attribute} = $filename;
                 $file->saveAs(rtrim(Yii::getAlias($this->uploadPath), '/') . '/' . $filename);
-                $this->owner->save(false, [$attribute]);
+                $this->owner->updateAttributes([
+                    $attribute => $filename,
+                ]);
                 continue;
             }
             if (!$this->owner->{$attribute}) {
