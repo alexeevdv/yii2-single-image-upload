@@ -3,6 +3,7 @@
 namespace alexeevdv\image;
 
 use kartik\file\FileInput;
+use yii\base\InvalidConfigException;
 use yii\helpers\ArrayHelper;
 use yii\helpers\Html;
 use yii\helpers\Url;
@@ -17,6 +18,11 @@ class SingleImageUploadWidget extends FileInput
      * @var string
      */
     public $containerClass = 'single-image-upload-widget';
+
+    /**
+     * @var string
+     */
+    public $baseUrl;
 
     /**
      * @inheritdoc
@@ -47,7 +53,7 @@ class SingleImageUploadWidget extends FileInput
                 'showCaption' => false,
                 'showUpload' => false,
                 'initialPreview' => [
-                    $value ? Url::to('/uploads/' . $value) : null
+                    $value ? $this->getBaseUrl() . '/' . $value : null
                 ],
                 'initialPreviewAsData' => true,
             ],
@@ -78,5 +84,30 @@ class SingleImageUploadWidget extends FileInput
             $html .= Html::hiddenInput($this->name, $this->value);
         }
         return $html;
+    }
+
+    /**
+     * @return string
+     */
+    protected function getBaseUrl()
+    {
+        if ($this->baseUrl) {
+            return rtrim($this->baseUrl, '/');
+        }
+
+        $uploadPath = rtrim($this->getSingleImageUploadBehavior()->uploadPath, '/');
+        return str_replace('@frontend/web', '', $uploadPath);
+    }
+
+    /**
+     * @return null|SingleImageUploadBehavior
+     */
+    protected function getSingleImageUploadBehavior()
+    {
+        foreach ($this->model->getBehaviors() as $behavior) {
+            if ($behavior instanceof SingleImageUploadBehavior) {
+                return $behavior;
+            }
+        }
     }
 }
