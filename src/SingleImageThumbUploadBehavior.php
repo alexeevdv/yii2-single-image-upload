@@ -1,13 +1,16 @@
 <?php
 
-namespace backend\behaviors;
+namespace alexeevdv\image;
 
 use Yii;
 use yii\base\Behavior;
 use yii\base\InvalidConfigException;
+use yii\base\InvalidParamException;
 use yii\web\UploadedFile;
 use yii\imagine\Image;
 use Imagine\Image\Box;
+use Imagine\Image\Point;
+use Imagine\Image\Point\Center;
 use yii\helpers\Url;
 
 /**
@@ -16,13 +19,9 @@ use yii\helpers\Url;
  */
 class SingleImageThumbUploadBehavior extends Behavior
 {
-    /** @var string
-     * only 'thumb' or 'resize'
-     */
-    public $mode = 'thumb';
-
     /** @var  array */
-    public $size;
+    public $thumbnails;
+
     /**
      * @var string
      */
@@ -33,6 +32,9 @@ class SingleImageThumbUploadBehavior extends Behavior
      */
     public $thumbUploadPath = '@frontend/web/uploads';
 
+    /**
+     * @var null|string
+     */
     public $basePath = null;
 
     /**
@@ -40,11 +42,8 @@ class SingleImageThumbUploadBehavior extends Behavior
      */
     public function init()
     {
-        if ($this->mode !== 'thumb' && $this->mode !== 'resize') {
-            throw new InvalidConfigException('`mode` param must be `thumb` or `resize`');
-        }
-        if (!$this->size) {
-            throw new InvalidConfigException('`size` param is required');
+        if (!$this->thumbnails) {
+            throw new InvalidConfigException('`thumbnails` param is required');
         }
         parent::init();
     }
@@ -62,31 +61,53 @@ class SingleImageThumbUploadBehavior extends Behavior
      * @param string $attribute
      * @return string
      */
-    public function getThumb($attribute)
+    public function getThumbnail($attribute, $type)
     {
-        if ($this->mode === 'resize') {
-            Image::getImagine()
-                ->open(rtrim(Yii::getAlias($this->imageUploadPath), '/') . '/' . $this->owner->$attribute)
-                ->resize(new Box($this->size['width'], $this->size['height']))
-                ->save(
-                    rtrim(Yii::getAlias($this->thumbUploadPath), '/') . '/' . 'thumb-' . $this->owner->$attribute,
-                    ['quality' => $this->size['quality']]
-                );
-        } else {
-            Image::getImagine()
-                ->open(rtrim(Yii::getAlias($this->imageUploadPath), '/') . '/' . $this->owner->$attribute)
-                ->thumbnail(new Box($this->size['width'], $this->size['height']))
-                ->save(
-                    rtrim(Yii::getAlias($this->thumbUploadPath), '/') . '/' . 'thumb-' . $this->owner->$attribute,
-                    ['quality' => $this->size['quality']]
-                );
+        if (file_exists(rtrim(Yii::getAlias($this->thumbUploadPath), '/') . '/' . 'thumb-' . $this->owner->$attribute)) {
+            if ($this->basePath) {
+                return Url::to(rtrim(Yii::getAlias($this->basePath), '/') . '/' . 'thumb-' . $this->owner->$attribute);
+            }
+
+            $filePath =  rtrim($this->thumbUploadPath, '/') . '/' . 'thumb-' . $this->owner->$attribute;
+            $basePath = str_replace('@frontend/web', '', $filePath);
+            return Url::to($basePath);
         }
+
+        $size = $this->thumbnails[$type];
+        if (!$size) {
+            throw new InvalidParamException('`type` param is missing in model behavior config');
+        }
+
+        $image = Image::getImagine()
+            ->open(rtrim(Yii::getAlias($this->imageUploadPath), '/') . '/' . $this->owner->$attribute);
+
+        $width = $image->getSize()->getWidth();
+        $height = $image->getSize()->getHeight();
+        $ratio = $width / $height;
+
+        if ($width < $size['width'] || ($height < $size['height'])) {
+            if ($size['width'] > $size['height']) {
+                $image->resize(new Box($size['height'] * $ratio, $size['height']));
+            } else {
+                $image->resize(new Box($size['width'], $size['width'] / $ratio));
+            }
+        }
+
+//        $newWidth = $image->getSize()->getWidth();
+//        $newHeight = $image->getSize()->getHeight();
+//        $box = new Box($newWidth, $newHeight);
+//        $center = new Center($box);
+
+        $image->crop(new Point(0, 0), new Box($size['width'], $size['height']))
+            ->save(
+                rtrim(Yii::getAlias($this->thumbUploadPath), '/') . '/' . 'thumb-' . $this->owner->$attribute
+            );
 
         if ($this->basePath) {
             return Url::to(rtrim(Yii::getAlias($this->basePath), '/') . '/' . 'thumb-' . $this->owner->$attribute);
         }
 
-        $filePath =  rtrim($this->thumbUploadPath, '/') . '/' . 'thumb-' . $this->owner->$attribute;
+        $filePath = rtrim($this->thumbUploadPath, '/') . '/' . 'thumb-' . $this->owner->$attribute;
         $basePath = str_replace('@frontend/web', '', $filePath);
         return Url::to($basePath);
     }
