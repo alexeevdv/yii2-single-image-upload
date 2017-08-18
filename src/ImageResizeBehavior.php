@@ -14,10 +14,10 @@ use Imagine\Image\Point\Center;
 use yii\helpers\Url;
 
 /**
- * Class SingleImageThumbUploadBehavior
+ * Class ImageResizeBehavior
  * @package alexeevdv\image
  */
-class SingleImageThumbUploadBehavior extends Behavior
+class ImageResizeBehavior extends Behavior
 {
     /** @var  array */
     public $thumbnails;
@@ -35,7 +35,7 @@ class SingleImageThumbUploadBehavior extends Behavior
     /**
      * @var null|string
      */
-    public $basePath = null;
+    public $baseUrl = null;
 
     /**
      * @inheritdoc
@@ -49,23 +49,14 @@ class SingleImageThumbUploadBehavior extends Behavior
     }
 
     /**
-     * @param UploadedFile $file
-     * @return string
-     */
-    private function generateFilename(UploadedFile $file)
-    {
-        return $file->baseName . '.' . $file->extension;
-    }
-
-    /**
      * @param string $attribute
      * @return string
      */
     public function getThumbnail($attribute, $type)
     {
         if (file_exists(rtrim(Yii::getAlias($this->thumbUploadPath), '/') . '/' . 'thumb-' . $this->owner->$attribute)) {
-            if ($this->basePath) {
-                return Url::to(rtrim(Yii::getAlias($this->basePath), '/') . '/' . 'thumb-' . $this->owner->$attribute);
+            if ($this->baseUrl) {
+                return Url::to(rtrim(Yii::getAlias($this->baseUrl), '/') . '/' . 'thumb-' . $this->owner->$attribute);
             }
 
             $filePath =  rtrim($this->thumbUploadPath, '/') . '/' . 'thumb-' . $this->owner->$attribute;
@@ -103,8 +94,8 @@ class SingleImageThumbUploadBehavior extends Behavior
                 rtrim(Yii::getAlias($this->thumbUploadPath), '/') . '/' . 'thumb-' . $this->owner->$attribute
             );
 
-        if ($this->basePath) {
-            return Url::to(rtrim(Yii::getAlias($this->basePath), '/') . '/' . 'thumb-' . $this->owner->$attribute);
+        if ($this->baseUrl) {
+            return Url::to(rtrim(Yii::getAlias($this->baseUrl), '/') . '/' . 'thumb-' . $this->owner->$attribute);
         }
 
         $filePath = rtrim($this->thumbUploadPath, '/') . '/' . 'thumb-' . $this->owner->$attribute;
