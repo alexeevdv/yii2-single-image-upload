@@ -1,15 +1,14 @@
 <?php
 
-namespace alexeevdv\image;
+namespace backend\behaviors;
 
-use Imagine\Image\Box;
 use Yii;
 use yii\base\Behavior;
 use yii\base\InvalidConfigException;
-use yii\db\ActiveRecord;
-use yii\helpers\Url;
-use yii\imagine\Image;
 use yii\web\UploadedFile;
+use yii\imagine\Image;
+use Imagine\Image\Box;
+use yii\helpers\Url;
 
 /**
  * Class SingleImageThumbUploadBehavior
@@ -24,10 +23,6 @@ class SingleImageThumbUploadBehavior extends Behavior
 
     /** @var  array */
     public $size;
-
-    /** @var  array|string */
-    public $attributes;
-
     /**
      * @var string
      */
@@ -38,10 +33,7 @@ class SingleImageThumbUploadBehavior extends Behavior
      */
     public $thumbUploadPath = '@frontend/web/uploads';
 
-    /**
-     * @var null|string
-     */
-    public $baseUrl = null;
+    public $basePath = null;
 
     /**
      * @inheritdoc
@@ -54,53 +46,7 @@ class SingleImageThumbUploadBehavior extends Behavior
         if (!$this->size) {
             throw new InvalidConfigException('`size` param is required');
         }
-        if (!$this->attributes) {
-            throw new InvalidConfigException('`attributes` param is required');
-        }
         parent::init();
-    }
-
-    /**
-     * @inheritdoc
-     */
-    public function events()
-    {
-        return [
-            ActiveRecord::EVENT_AFTER_UPDATE => 'onAfterSave',
-            ActiveRecord::EVENT_AFTER_INSERT => 'onAfterSave'
-        ];
-    }
-
-    /**
-     * EVENT_AFTER_UPDATE and EVENT_AFTER_INSERT event handler
-     */
-    public function onAfterSave()
-    {
-        $attributes = is_array($this->attributes) ? $this->attributes : (array) $this->attributes;
-        foreach ($attributes as $attribute) {
-            $file = UploadedFile::getInstance($this->owner, $attribute);
-            if ($file) {
-                $filename = $this->generateFilename($file);
-                if ($this->mode === 'resize') {
-                    Image::getImagine()
-                        ->open(rtrim(Yii::getAlias($this->imageUploadPath), '/') . '/' . $filename)
-                        ->resize(new Box($this->size['width'], $this->size['height']))
-                        ->save(
-                            rtrim(Yii::getAlias($this->thumbUploadPath), '/') . '/' . "thumb-$filename",
-                            ['quality' => $this->size['quality']]
-                        );
-                } else {
-                    Image::getImagine()
-                        ->open(rtrim(Yii::getAlias($this->imageUploadPath), '/') . '/' . $filename)
-                        ->thumbnail(new Box($this->size['width'], $this->size['height']))
-                        ->save(
-                            rtrim(Yii::getAlias($this->thumbUploadPath), '/') . '/' . "thumb-$filename",
-                            ['quality' => $this->size['quality']]
-                        );
-                }
-                continue;
-            }
-        }
     }
 
     /**
@@ -118,8 +64,26 @@ class SingleImageThumbUploadBehavior extends Behavior
      */
     public function getThumb($attribute)
     {
-        if ($this->baseUrl) {
-            return Url::to(rtrim(Yii::getAlias($this->baseUrl), '/') . '/' . 'thumb-' . $this->owner->$attribute);
+        if ($this->mode === 'resize') {
+            Image::getImagine()
+                ->open(rtrim(Yii::getAlias($this->imageUploadPath), '/') . '/' . $this->owner->$attribute)
+                ->resize(new Box($this->size['width'], $this->size['height']))
+                ->save(
+                    rtrim(Yii::getAlias($this->thumbUploadPath), '/') . '/' . 'thumb-' . $this->owner->$attribute,
+                    ['quality' => $this->size['quality']]
+                );
+        } else {
+            Image::getImagine()
+                ->open(rtrim(Yii::getAlias($this->imageUploadPath), '/') . '/' . $this->owner->$attribute)
+                ->thumbnail(new Box($this->size['width'], $this->size['height']))
+                ->save(
+                    rtrim(Yii::getAlias($this->thumbUploadPath), '/') . '/' . 'thumb-' . $this->owner->$attribute,
+                    ['quality' => $this->size['quality']]
+                );
+        }
+
+        if ($this->basePath) {
+            return Url::to(rtrim(Yii::getAlias($this->basePath), '/') . '/' . 'thumb-' . $this->owner->$attribute);
         }
 
         $filePath =  rtrim($this->thumbUploadPath, '/') . '/' . 'thumb-' . $this->owner->$attribute;
