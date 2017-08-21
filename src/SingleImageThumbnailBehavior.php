@@ -60,23 +60,29 @@ class SingleImageThumbnailBehavior extends Behavior
         if (!isset($this->thumbnails[$type])) {
             throw new InvalidParamException('Invalid thumbnail type: ' . $type);
         }
+
         $thumbnail = $this->thumbnails[$type];
+        $width = $thumbnail['width'];
+        $height = $thumbnail['height'];
+        $mode = isset($thumbnail['mode']) ? $thumbnail['mode'] : ImageInterface::THUMBNAIL_OUTBOUND;
 
         if (file_exists($this->generateThumbnailPath($attribute, $type))) {
             return $this->generateUrl($attribute, $type);
         }
 
         $image = Image::getImagine()->open($this->generateSourcePath($attribute));
-        if (!$this->checkImageSize($image, $thumbnail['width'], $thumbnail['height'])) {
-            $image = $this->enlargeImage($image, $thumbnail['width'], $thumbnail['height']);
+
+        // TODO: $this->ensureImageSize
+        if (!$this->checkImageSize($image, $width, $height)) {
+            $image = $this->enlargeImage($image, $width, $height);
         }
 
-        $mode = isset($thumbnail['mode']) ? $thumbnail['mode'] : ImageInterface::THUMBNAIL_OUTBOUND;
-        $image = $image->thumbnail(new Box($thumbnail['width'], $thumbnail['height']), $mode);
+        $image = $image->thumbnail(new Box($width, $height), $mode);
 
-        if (isset($thumbnail['mode']) && $thumbnail['mode'] === ImageInterface::THUMBNAIL_INSET) {
+        // TODO: $this->ensureImagePads
+        if ($mode === ImageInterface::THUMBNAIL_INSET) {
             // TODO: pass background color and opacity
-            $image = $this->padImage($image, $thumbnail['width'], $thumbnail['height']);
+            $image = $this->padImage($image, $width, $height);
         }
 
         $image->save($this->generateThumbnailPath($attribute, $type));
@@ -114,11 +120,7 @@ class SingleImageThumbnailBehavior extends Behavior
         $newWidth  = (int)$image->getSize()->getWidth()  * $ratio;
         $newHeight = (int)$image->getSize()->getHeight() * $ratio;
 
-        return $image->resize(new Box(
-                $newWidth,
-                $newHeight
-            )
-        );
+        return $image->resize(new Box($newWidth,$newHeight));
     }
 
     protected function padImage(ImageInterface $img, $width, $height, $bg_color = '#fff', $bg_alpha = 100)
