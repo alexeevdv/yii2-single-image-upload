@@ -24,12 +24,28 @@ class SingleImageThumbnailBehavior extends Behavior
     /**
      * @var string
      */
-    public $uploadPath = '@frontend/web/uploads';
+    public $sourcePath = '@frontend/web/uploads';
 
     /**
      * @var string
      */
-    public $basePath = null;
+    public $destinationPath;
+
+    /**
+     * @var string
+     */
+    public $baseUrl = null;
+
+    /**
+     * @inheritdoc
+     */
+    public function init()
+    {
+        if ($this->destinationPath === null) {
+            $this->destinationPath = $this->sourcePath;
+        }
+        parent::init();
+    }
 
     /**
      * @param string $attribute
@@ -89,7 +105,7 @@ class SingleImageThumbnailBehavior extends Behavior
      */
     protected function generateThumbnailPath($attribute, $type)
     {
-        return rtrim(Yii::getAlias($this->uploadPath), '/') . '/' . $type . '-' . $this->owner->$attribute;
+        return rtrim(Yii::getAlias($this->destinationPath), '/') . '/' . $type . '-' . $this->owner->$attribute;
     }
 
     /**
@@ -98,7 +114,7 @@ class SingleImageThumbnailBehavior extends Behavior
      */
     protected function generateSourcePath($attribute)
     {
-        return rtrim(Yii::getAlias($this->uploadPath), '/') . '/' . $this->owner->$attribute;
+        return rtrim(Yii::getAlias($this->sourcePath), '/') . '/' . $this->owner->$attribute;
     }
 
     /**
@@ -108,12 +124,12 @@ class SingleImageThumbnailBehavior extends Behavior
      */
     protected function generateUrl($attribute, $type)
     {
-        if ($this->basePath) {
-            return Url::to(rtrim(Yii::getAlias($this->basePath), '/') . '/' . $type . '-' . $this->owner->$attribute);
+        if ($this->baseUrl) {
+            return Url::to(rtrim(Yii::getAlias($this->baseUrl), '/') . '/' . $type . '-' . $this->owner->$attribute);
         }
 
-        $fullPath =  rtrim($this->uploadPath, '/') . '/' . $type . '-' . $this->owner->$attribute;
-        $basePath = str_replace('@frontend/web', '', $fullPath);
-        return Url::to($basePath);
+        $fullPath =  rtrim($this->destinationPath, '/') . '/' . $type . '-' . $this->owner->$attribute;
+        $baseUrl = str_replace('@frontend/web', '', $fullPath);
+        return Url::to($baseUrl);
     }
 }

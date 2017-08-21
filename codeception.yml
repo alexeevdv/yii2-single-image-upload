@@ -1,8 +1,12 @@
 suites:
     unit:
         path: .
-
+modules:
+    enabled:
+        - Yii2:
+            configFile: 'tests/config/main.php'
 settings:
+    bootstrap: _bootstrap.php
     shuffle: true
     lint: true
 paths:
@@ -10,4 +14,3 @@ paths:
     output: tests/_output
     support: tests/_support
     data: tests
-     
