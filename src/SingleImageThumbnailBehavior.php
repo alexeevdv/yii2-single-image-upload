@@ -52,8 +52,8 @@ class SingleImageThumbnailBehavior extends Behavior
             $image = $this->enlargeImage($image, $thumbnail['width'], $thumbnail['height']);
         }
 
-        $mode = isset($thumbnail['mode']) ? $thumbnail['mode'] : ImageInterface::THUMBNAIL_INSET;
-        $image->thumbnail(new Box($thumbnail['width'], $thumbnail['height']), $mode);
+        $mode = isset($thumbnail['mode']) ? $thumbnail['mode'] : ImageInterface::THUMBNAIL_OUTBOUND;
+        $image = $image->thumbnail(new Box($thumbnail['width'], $thumbnail['height']), $mode);
         $image->save($this->generateThumbnailPath($attribute, $type));
 
         return $this->generateUrl($attribute, $type);
@@ -89,7 +89,7 @@ class SingleImageThumbnailBehavior extends Behavior
      */
     protected function generateThumbnailPath($attribute, $type)
     {
-        return rtrim(Yii::getAlias($this->uploadPath), '/') . '/' . $type . '-' . $attribute;
+        return rtrim(Yii::getAlias($this->uploadPath), '/') . '/' . $type . '-' . $this->owner->$attribute;
     }
 
     /**
@@ -98,7 +98,7 @@ class SingleImageThumbnailBehavior extends Behavior
      */
     protected function generateSourcePath($attribute)
     {
-        return rtrim(Yii::getAlias($this->uploadPath), '/') . '/' . $attribute;
+        return rtrim(Yii::getAlias($this->uploadPath), '/') . '/' . $this->owner->$attribute;
     }
 
     /**
@@ -109,10 +109,10 @@ class SingleImageThumbnailBehavior extends Behavior
     protected function generateUrl($attribute, $type)
     {
         if ($this->basePath) {
-            return Url::to(rtrim(Yii::getAlias($this->basePath), '/') . '/' . $type . '-' . $attribute);
+            return Url::to(rtrim(Yii::getAlias($this->basePath), '/') . '/' . $type . '-' . $this->owner->$attribute);
         }
 
-        $fullPath =  rtrim($this->uploadPath, '/') . '/' . $type . '-' . $attribute;
+        $fullPath =  rtrim($this->uploadPath, '/') . '/' . $type . '-' . $this->owner->$attribute;
         $basePath = str_replace('@frontend/web', '', $fullPath);
         return Url::to($basePath);
     }
