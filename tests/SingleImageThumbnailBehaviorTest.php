@@ -2,15 +2,31 @@
 
 use alexeevdv\image\SingleImageThumbnailBehavior;
 use Codeception\Test\Unit;
+use Imagine\Image\ImageInterface;
+use Imagine\Image\ImagineInterface;
 use yii\base\DynamicModel;
 use yii\base\Model;
 
+/**
+ * Class SingleImageThumbnailBehaviorTest
+ */
 class SingleImageThumbnailBehaviorTest extends Unit
 {
-    public function testGetThumbnail()
+    /**
+     * @param int $width
+     * @param int $height
+     * @param int $thumbnailWidth
+     * @param int $thumbnailHeight
+     * @param string $mode
+     * @dataProvider getThumbnailDataProvider
+     */
+    public function testGetThumbnail($width, $height, $thumbnailWidth, $thumbnailHeight, $mode)
     {
+        $sourceSize = $width . 'x' . $height;
+        $thumbnailSize = $thumbnailWidth . 'x' . $thumbnailHeight . '-' . $mode;
+
         $model = new DynamicModel([
-            'image' => '320x200.jpg',
+            'image' => $sourceSize . '.jpg',
         ]);
 
         $model->attachBehavior('thumbnail', [
@@ -19,17 +35,35 @@ class SingleImageThumbnailBehaviorTest extends Unit
             'destinationPath' => '@tests/_output',
             'baseUrl' => '/uploads',
             'thumbnails' => [
-                '200x150' => [
-                    'width' => 200,
-                    'height' => 150,
+                $thumbnailSize => [
+                    'width' => $thumbnailWidth,
+                    'height' => $thumbnailHeight,
+                    'mode' => $mode,
                 ],
             ],
         ]);
 
-        $url = $model->getThumbnail('image', '200x150');
-        $this->assertEquals('/uploads/200x150-320x200.jpg', $url);
+        $url = $model->getThumbnail('image', $thumbnailSize);
+        $this->assertEquals('/uploads/'. $thumbnailSize . '-' . $sourceSize . '.jpg', $url);
 
-        // TODO check generated image size
+        list($imageWidth, $imageHeight) = getimagesize(Yii::getAlias('@tests/_output/' . $thumbnailSize . '-' . $sourceSize . '.jpg'));
+        $this->assertEquals($thumbnailWidth, $imageWidth);
+        $this->assertEquals($thumbnailHeight, $imageHeight);
+    }
 
+    /**
+     * @return array
+     */
+    public function getThumbnailDataProvider()
+    {
+        return [
+            [320, 200, 200, 150, ImageInterface::THUMBNAIL_OUTBOUND],
+            // Should be surrounded by empty space on the top and the bottom
+            [320, 200, 200, 150, ImageInterface::THUMBNAIL_INSET],
+            // Should be resized and then cropped
+            [320, 200, 400, 300, ImageInterface::THUMBNAIL_OUTBOUND],
+            // Should be resized and then surrounded by empty space on the top and the bottom
+            [320, 200, 400, 300, ImageInterface::THUMBNAIL_INSET],
+        ];
     }
 }

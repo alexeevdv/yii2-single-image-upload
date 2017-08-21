@@ -2,8 +2,11 @@
 
 namespace alexeevdv\image;
 
+use Imagine\Image\Palette\Color;
 use Imagine\Image\Box;
 use Imagine\Image\ImageInterface;
+use Imagine\Image\Palette\RGB;
+use Imagine\Image\Point;
 use Yii;
 use yii\base\Behavior;
 use yii\base\InvalidParamException;
@@ -70,6 +73,12 @@ class SingleImageThumbnailBehavior extends Behavior
 
         $mode = isset($thumbnail['mode']) ? $thumbnail['mode'] : ImageInterface::THUMBNAIL_OUTBOUND;
         $image = $image->thumbnail(new Box($thumbnail['width'], $thumbnail['height']), $mode);
+
+        if (isset($thumbnail['mode']) && $thumbnail['mode'] === ImageInterface::THUMBNAIL_INSET) {
+            // TODO: pass background color and opacity
+            $image = $this->padImage($image, $thumbnail['width'], $thumbnail['height']);
+        }
+
         $image->save($this->generateThumbnailPath($attribute, $type));
 
         return $this->generateUrl($attribute, $type);
@@ -94,7 +103,41 @@ class SingleImageThumbnailBehavior extends Behavior
      */
     protected function enlargeImage(ImageInterface $image, $width, $height)
     {
-        // TODO: implement image resize
+        // Calculate ratio of desired maximum sizes and original sizes.
+        $widthRatio = $width / $image->getSize()->getWidth();
+        $heightRatio = $height / $image->getSize()->getHeight();
+
+        // Ratio used for calculating new image dimensions.
+        $ratio = max($widthRatio, $heightRatio);
+
+        // Calculate new image dimensions.
+        $newWidth  = (int)$image->getSize()->getWidth()  * $ratio;
+        $newHeight = (int)$image->getSize()->getHeight() * $ratio;
+
+        return $image->resize(new Box(
+                $newWidth,
+                $newHeight
+            )
+        );
+    }
+
+    protected function padImage(ImageInterface $img, $width, $height, $bg_color = '#fff', $bg_alpha = 100)
+    {
+        $size = $img->getSize();
+        $x = $y = 0;
+        if ($width > $size->getWidth()) {
+            $x =  round(($width - $size->getWidth()) / 2);
+        } elseif ($height > $size->getHeight()) {
+            $y = round(($height - $size->getHeight()) / 2);
+        }
+
+        $palette = new RGB;
+        $color = $palette->color($bg_color, $bg_alpha);
+        $image = Image::getImagine()->create(new Box($width, $height), $color);
+
+        $pasteto = new Point($x, $y);
+        $image->paste($img, $pasteto);
+
         return $image;
     }
 
