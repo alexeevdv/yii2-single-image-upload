@@ -52,6 +52,32 @@ class SingleImageThumbnailBehaviorTest extends Unit
     }
 
     /**
+     *
+     */
+    public function testPlaceholder()
+    {
+        $model = new DynamicModel([
+            'image' => null,
+        ]);
+
+        $model->attachBehavior('thumbnail', [
+            'class' => SingleImageThumbnailBehavior::class,
+            'sourcePath' => '@tests/_data',
+            'destinationPath' => '@tests/_output',
+            'baseUrl' => '/uploads',
+            'thumbnails' => [
+                'thumb' => [
+                    'width' => 100,
+                    'height' => 200,
+                ],
+            ],
+        ]);
+
+        $url = $model->getThumbnail('image', 'thumb');
+        $this->assertEquals('http://placehold.it/100x200', $url);
+    }
+
+    /**
      * @return array
      */
     public function getThumbnailDataProvider()

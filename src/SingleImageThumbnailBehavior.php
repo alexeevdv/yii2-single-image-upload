@@ -37,7 +37,7 @@ class SingleImageThumbnailBehavior extends Behavior
     /**
      * @var string
      */
-    public $baseUrl = null;
+    public $baseUrl;
 
     /**
      * @inheritdoc
@@ -61,31 +61,17 @@ class SingleImageThumbnailBehavior extends Behavior
             throw new InvalidParamException('Invalid thumbnail type: ' . $type);
         }
 
-        $thumbnail = $this->thumbnails[$type];
-        $width = $thumbnail['width'];
-        $height = $thumbnail['height'];
-        $mode = isset($thumbnail['mode']) ? $thumbnail['mode'] : ImageInterface::THUMBNAIL_OUTBOUND;
-
         if (file_exists($this->generateThumbnailPath($attribute, $type))) {
             return $this->generateUrl($attribute, $type);
         }
 
-        $image = Image::getImagine()->open($this->generateSourcePath($attribute));
+        $thumbnail = new SingleImageThumbnail($this->thumbnails[$type]);
 
-        // TODO: $this->ensureImageSize
-        if (!$this->checkImageSize($image, $width, $height)) {
-            $image = $this->enlargeImage($image, $width, $height);
+        if (empty($this->owner->$attribute) || !file_exists($this->generateSourcePath($attribute))) {
+            return $this->generatePlaceholderUrl($thumbnail);
         }
 
-        $image = $image->thumbnail(new Box($width, $height), $mode);
-
-        // TODO: $this->ensureImagePads
-        if ($mode === ImageInterface::THUMBNAIL_INSET) {
-            $backgroundColor = isset($thumbnail['bg_color']) ? $thumbnail['bg_color'] : '#fff';
-            $backgroundAlpha = isset($thumbnail['bg_alpha']) ? $thumbnail['bg_alpha'] : 100;
-            $image = $this->padImage($image, $width, $height, $backgroundColor, $backgroundAlpha);
-        }
-
+        $image = $this->generateThumbnailImage($this->generateSourcePath($attribute), $thumbnail);
         $image->save($this->generateThumbnailPath($attribute, $type));
 
         return $this->generateUrl($attribute, $type);
@@ -93,55 +79,56 @@ class SingleImageThumbnailBehavior extends Behavior
 
     /**
      * @param ImageInterface $image
-     * @param int $width
-     * @param int $height
-     * @return bool
+     * @param SingleImageThumbnail $thumbnail
+     * @return ImageInterface
      */
-    protected function checkImageSize(ImageInterface $image, $width, $height)
+    protected function ensureImageSize(ImageInterface $image, SingleImageThumbnail $thumbnail)
     {
-        return $image->getSize()->getWidth() >= $width && $image->getSize()->getWidth() >= $height;
+        if ($image->getSize()->getWidth() >= $thumbnail->getWidth() && $image->getSize()->getWidth() >= $thumbnail->getHeight()) {
+            return $image;
+        }
+
+        $ratio = max(
+            $thumbnail->getWidth() / $image->getSize()->getWidth(),
+            $thumbnail->getHeight() / $image->getSize()->getHeight()
+        );
+
+        $newSize = new Box(
+            ceil($image->getSize()->getWidth() * $ratio),
+            ceil($image->getSize()->getHeight() * $ratio)
+        );
+
+        return $image->resize($newSize);
     }
 
     /**
      * @param ImageInterface $image
-     * @param int $width
-     * @param int $height
+     * @param SingleImageThumbnail $thumbnail
      * @return ImageInterface
      */
-    protected function enlargeImage(ImageInterface $image, $width, $height)
+    protected function ensureImagePads(ImageInterface $image, SingleImageThumbnail $thumbnail)
     {
-        // Calculate ratio of desired maximum sizes and original sizes.
-        $widthRatio = $width / $image->getSize()->getWidth();
-        $heightRatio = $height / $image->getSize()->getHeight();
+        if ($thumbnail->getMode() !== SingleImageThumbnail::MODE_INSET) {
+            return $image;
+        }
 
-        // Ratio used for calculating new image dimensions.
-        $ratio = max($widthRatio, $heightRatio);
+        $x = 0;
+        $y = 0;
 
-        // Calculate new image dimensions.
-        $newWidth  = (int)$image->getSize()->getWidth()  * $ratio;
-        $newHeight = (int)$image->getSize()->getHeight() * $ratio;
+        $imageWidth = $image->getSize()->getWidth();
+        $imageHeight = $image->getSize()->getHeight();
 
-        return $image->resize(new Box($newWidth, $newHeight));
-    }
-
-    protected function padImage(ImageInterface $img, $width, $height, $bg_color = '#fff', $bg_alpha = 100)
-    {
-        $size = $img->getSize();
-        $x = $y = 0;
-        if ($width > $size->getWidth()) {
-            $x =  round(($width - $size->getWidth()) / 2);
-        } elseif ($height > $size->getHeight()) {
-            $y = round(($height - $size->getHeight()) / 2);
+        if ($thumbnail->getWidth() > $imageWidth) {
+            $x =  round(($thumbnail->getWidth() - $imageWidth) / 2);
+        } elseif ($thumbnail->getHeight() > $imageHeight) {
+            $y = round(($thumbnail->getHeight() - $imageHeight) / 2);
         }
 
         $palette = new RGB;
-        $color = $palette->color($bg_color, $bg_alpha);
-        $image = Image::getImagine()->create(new Box($width, $height), $color);
-
-        $pasteto = new Point($x, $y);
-        $image->paste($img, $pasteto);
-
-        return $image;
+        $color = $palette->color($thumbnail->getBackgroundColor(), $thumbnail->getBackgroundOpacity());
+        return Image::getImagine()
+            ->create(new Box($thumbnail->getWidth(), $thumbnail->getHeight()), $color)
+            ->paste($image, new Point($x, $y));
     }
 
     /**
@@ -177,5 +164,27 @@ class SingleImageThumbnailBehavior extends Behavior
         $fullPath =  rtrim($this->destinationPath, '/') . '/' . $type . '-' . $this->owner->$attribute;
         $baseUrl = str_replace('@frontend/web', '', $fullPath);
         return Url::to($baseUrl);
+    }
+
+    /**
+     * @param SingleImageThumbnail $thumbnail
+     * @return string
+     */
+    protected function generatePlaceholderUrl(SingleImageThumbnail $thumbnail)
+    {
+        return 'http://placehold.it/' . $thumbnail->getWidth() . 'x' . $thumbnail->getHeight();
+    }
+
+    /**
+     * @param string $sourcePath
+     * @param SingleImageThumbnail $thumbnail
+     * @return ImageInterface
+     */
+    protected function generateThumbnailImage($sourcePath, SingleImageThumbnail $thumbnail)
+    {
+        $image = Image::getImagine()->open($sourcePath);
+        $image = $this->ensureImageSize($image, $thumbnail);
+        $image = $image->thumbnail(new Box($thumbnail->getWidth(), $thumbnail->getHeight()), $thumbnail->getMode());
+        return $this->ensureImagePads($image, $thumbnail);
     }
 }
