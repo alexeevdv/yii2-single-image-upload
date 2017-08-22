@@ -57,6 +57,11 @@ class SingleImageThumbnailBehavior extends Behavior
      */
     public function getThumbnail($attribute, $type)
     {
+        //если нет записи о картинке
+        if (!$this->owner->$attribute) {
+            return false;
+        }
+
         if (!isset($this->thumbnails[$type])) {
             throw new InvalidParamException('Invalid thumbnail type: ' . $type);
         }
@@ -68,6 +73,13 @@ class SingleImageThumbnailBehavior extends Behavior
 
         if (file_exists($this->generateThumbnailPath($attribute, $type))) {
             return $this->generateUrl($attribute, $type);
+        }
+
+        if (!file_exists($this->generateSourcePath($attribute))) {
+            Yii::error([
+                'message' => "File {$this->generateSourcePath($attribute)} not found",
+            ], 'alexeevdv\Image\SingleImageThumbnailBehavior');
+            return;
         }
 
         $image = Image::getImagine()->open($this->generateSourcePath($attribute));
