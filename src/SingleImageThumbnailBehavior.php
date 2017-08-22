@@ -2,7 +2,6 @@
 
 namespace alexeevdv\image;
 
-use Imagine\Image\Palette\Color;
 use Imagine\Image\Box;
 use Imagine\Image\ImageInterface;
 use Imagine\Image\Palette\RGB;
@@ -65,6 +64,8 @@ class SingleImageThumbnailBehavior extends Behavior
         $width = $thumbnail['width'];
         $height = $thumbnail['height'];
         $mode = isset($thumbnail['mode']) ? $thumbnail['mode'] : ImageInterface::THUMBNAIL_OUTBOUND;
+        $bg_color = isset($thumbnail['bg-color']) ? $thumbnail['bg-color'] : '#fff';
+        $opacity = isset($thumbnail['opacity']) ? $thumbnail['opacity'] : 100;
 
         if (file_exists($this->generateThumbnailPath($attribute, $type))) {
             return $this->generateUrl($attribute, $type);
@@ -72,17 +73,14 @@ class SingleImageThumbnailBehavior extends Behavior
 
         $image = Image::getImagine()->open($this->generateSourcePath($attribute));
 
-        // TODO: $this->ensureImageSize
-        if (!$this->checkImageSize($image, $width, $height)) {
+        if (!$this->ensureImageSize($image, $width, $height)) {
             $image = $this->enlargeImage($image, $width, $height);
         }
 
         $image = $image->thumbnail(new Box($width, $height), $mode);
 
-        // TODO: $this->ensureImagePads
-        if ($mode === ImageInterface::THUMBNAIL_INSET) {
-            // TODO: pass background color and opacity
-            $image = $this->padImage($image, $width, $height);
+        if ($this->ensureImagePads($mode)) {
+            $image = $this->padImage($image, $width, $height, $bg_color, $opacity);
         }
 
         $image->save($this->generateThumbnailPath($attribute, $type));
@@ -96,9 +94,18 @@ class SingleImageThumbnailBehavior extends Behavior
      * @param int $height
      * @return bool
      */
-    protected function checkImageSize(ImageInterface $image, $width, $height)
+    protected function ensureImageSize(ImageInterface $image, $width, $height)
     {
         return $image->getSize()->getWidth() >= $width && $image->getSize()->getWidth() >= $height;
+    }
+
+    /**
+     * @param string $mode
+     * @return bool
+     */
+    protected function ensureImagePads($mode)
+    {
+        return $mode === ImageInterface::THUMBNAIL_INSET;
     }
 
     /**
@@ -123,7 +130,15 @@ class SingleImageThumbnailBehavior extends Behavior
         return $image->resize(new Box($newWidth,$newHeight));
     }
 
-    protected function padImage(ImageInterface $img, $width, $height, $bg_color = '#fff', $bg_alpha = 100)
+    /**
+     * @param ImageInterface $img
+     * @param int $width
+     * @param int $height
+     * @param string $bg_color
+     * @param int $opacity
+     * @return mixed
+     */
+    protected function padImage(ImageInterface $img, $width, $height, $bg_color, $opacity)
     {
         $size = $img->getSize();
         $x = $y = 0;
@@ -134,11 +149,11 @@ class SingleImageThumbnailBehavior extends Behavior
         }
 
         $palette = new RGB;
-        $color = $palette->color($bg_color, $bg_alpha);
+        $color = $palette->color($bg_color, $opacity);
         $image = Image::getImagine()->create(new Box($width, $height), $color);
 
-        $pasteto = new Point($x, $y);
-        $image->paste($img, $pasteto);
+        $pasteTo = new Point($x, $y);
+        $image->paste($img, $pasteTo);
 
         return $image;
     }
