@@ -81,8 +81,9 @@ class SingleImageThumbnailBehavior extends Behavior
 
         // TODO: $this->ensureImagePads
         if ($mode === ImageInterface::THUMBNAIL_INSET) {
-            // TODO: pass background color and opacity
-            $image = $this->padImage($image, $width, $height);
+            $backgroundColor = isset($thumbnail['bg_color']) ? $thumbnail['bg_color'] : '#fff';
+            $backgroundAlpha = isset($thumbnail['bg_alpha']) ? $thumbnail['bg_alpha'] : 100;
+            $image = $this->padImage($image, $width, $height, $backgroundColor, $backgroundAlpha);
         }
 
         $image->save($this->generateThumbnailPath($attribute, $type));
@@ -120,7 +121,7 @@ class SingleImageThumbnailBehavior extends Behavior
         $newWidth  = (int)$image->getSize()->getWidth()  * $ratio;
         $newHeight = (int)$image->getSize()->getHeight() * $ratio;
 
-        return $image->resize(new Box($newWidth,$newHeight));
+        return $image->resize(new Box($newWidth, $newHeight));
     }
 
     protected function padImage(ImageInterface $img, $width, $height, $bg_color = '#fff', $bg_alpha = 100)
