@@ -70,6 +70,7 @@ class SingleImageUploadWidget extends FileInput
     {
         SingleImageUploadAsset::register($this->getView());
 
+        $html = parent::run();
         $this->getView()->registerJs("
             $('#$this->id').data('fileinput').\$container.addClass('$this->containerClass');
             $('#$this->id').on('fileclear', function(event) {
@@ -77,7 +78,6 @@ class SingleImageUploadWidget extends FileInput
             });
         ");
 
-        $html = parent::run();
         if ($this->model) {
             $html .= Html::activeHiddenInput($this->model, $this->attribute);
         } else {
